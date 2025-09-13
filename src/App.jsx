@@ -2,8 +2,16 @@ import { useState, useEffect, useRef } from "react";
 import "./App.css";
 
 const WORDS = [
-  "apple", "banana", "cat", "dog", "keyboard", "react",
-  "vite", "game", "code", "speed",
+  "apple",
+  "banana",
+  "cat",
+  "dog",
+  "keyboard",
+  "react",
+  "vite",
+  "game",
+  "code",
+  "speed",
 ];
 
 function App() {
@@ -103,7 +111,10 @@ function App() {
         prev.forEach((w) => {
           const newTop = w.top + w.speed;
           if (newTop >= GAME_HEIGHT - 30) {
-            setLives((l) => Math.max(l - 1, 0));
+            if (!w.hit) {
+              setLives((l) => Math.max(l - 1, 0));
+              w.hit = true; // artık can eksilmeyecek
+            }
           } else {
             survived.push({ ...w, top: newTop });
           }
