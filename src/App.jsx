@@ -1,18 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import "./App.css";
-
-const WORDS = [
-  "apple",
-  "banana",
-  "cat",
-  "dog",
-  "keyboard",
-  "react",
-  "vite",
-  "game",
-  "code",
-  "speed",
-];
+import WORDS from "./data/turkish_words.json";
 
 function App() {
   const GAME_WIDTH = 900;
@@ -30,6 +18,7 @@ function App() {
   const elapsedRef = useRef(0);
   const timerRef = useRef(null);
 
+  // Başlat
   const startGame = () => {
     setFallingWords([]);
     setInput("");
@@ -42,6 +31,19 @@ function App() {
     setGameStarted(true);
   };
 
+  // Visibility / Tab değişimi kontrolü
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setGameStarted(false);
+        clearInterval(timerRef.current);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
+
   // Zaman sayacı
   useEffect(() => {
     if (!gameStarted) return;
@@ -50,7 +52,6 @@ function App() {
       elapsedRef.current += 1;
       setElapsedTime(elapsedRef.current);
 
-      // Kelime sayısı kademeli artış
       if (elapsedRef.current > 20 && elapsedRef.current % 15 === 0) {
         setWordsPerInterval((prev) => prev + 1);
       }
@@ -78,7 +79,6 @@ function App() {
         const word = WORDS[Math.floor(Math.random() * WORDS.length)];
         let left;
         let tries = 0;
-        // Kelimelerin üst üste binmemesi için basit check
         do {
           left = Math.random() * (GAME_WIDTH - 100);
           tries++;
@@ -91,7 +91,6 @@ function App() {
       setFallingWords((prev) => [...prev, ...newWords]);
     };
 
-    // Başlangıçta hemen ekle
     addWord();
 
     const interval = setInterval(
@@ -113,7 +112,7 @@ function App() {
           if (newTop >= GAME_HEIGHT - 30) {
             if (!w.hit) {
               setLives((l) => Math.max(l - 1, 0));
-              w.hit = true; // artık can eksilmeyecek
+              w.hit = true;
             }
           } else {
             survived.push({ ...w, top: newTop });
@@ -141,7 +140,7 @@ function App() {
 
   return (
     <div className="app">
-      <h1>Typing Rush</h1>
+      <h1 className="game-title">Klavye Hız Testi</h1>
 
       {!gameStarted && (
         <button className="start-btn" onClick={startGame}>
@@ -185,7 +184,7 @@ function App() {
       {(!gameStarted || lives === 0) && elapsedTime > 0 && (
         <div className="game-over-overlay">
           <div className="game-over-dialog">
-            <h1>Typing Rush</h1>
+            <h1>Klavye Hız Testi</h1>
             <p className="game-over-text">
               Bu oyunda <strong>{elapsedTime}</strong> saniye dayanabildiniz.
             </p>
@@ -198,7 +197,7 @@ function App() {
 
             <div className="share-buttons">
               <a
-                href={`https://api.whatsapp.com/send?text=Ben ${elapsedTime} saniye dayanabildim ve WPM'im ${wpm}! Sen ne kadar dayanabilirsin? Oyna: https://seninsiten.com`}
+                href={`https://api.whatsapp.com/send?text=Ben ${elapsedTime} saniye dayanabildim ve WPM'im ${wpm}! Sen ne kadar dayanabilirsin? Oyna: https://typingrush.com.tr`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="share-btn whatsapp-btn"
@@ -207,7 +206,7 @@ function App() {
               </a>
 
               <a
-                href={`https://twitter.com/intent/tweet?text=Ben ${elapsedTime} saniye dayanabildim ve WPM'im ${wpm}! Sen ne kadar dayanabilirsin? Oyna: https://seninsiten.com`}
+                href={`https://twitter.com/intent/tweet?text=Ben ${elapsedTime} saniye dayanabildim ve WPM'im ${wpm}! Sen ne kadar dayanabilirsin? Oyna: https://typingrush.com.tr`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="share-btn twitter-btn"
