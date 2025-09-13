@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import "./App.css";
-import { Helmet } from "react-helmet";
 
 import WORDS from "./data/turkish_words.json";
 
@@ -147,20 +146,6 @@ function App() {
 
   return (
     <div className="app">
-      <Helmet>
-        <title>⌨️ Typing Rush - Hızını Test Et!</title>
-        <meta
-          name="description"
-          content="En hızlı yazan sen misin? Typing Rush ile yazma hızını test et!"
-        />
-        <meta property="og:title" content="⌨️ Typing Rush - Hızını Test Et!" />
-        <meta
-          property="og:description"
-          content="En hızlı yazan sen misin? Typing Rush ile öğren!"
-        />
-        <meta property="og:image" content="oyun_ekran_gorseli.png" />
-        <meta property="og:url" content="https://seninsiten.com" />
-      </Helmet>
       <h1 className="game-title">Klavye Hız Testi</h1>
 
       {!gameStarted && (
