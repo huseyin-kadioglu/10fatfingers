@@ -101,7 +101,7 @@ function App() {
         const baseSpeed = 0.5 + Math.random() * 1;
         newWords.push({ word, top: 0, left, speed: baseSpeed * speedFactor });
       }
-      setFallingWords(prev => [...prev, ...newWords]);
+      setFallingWords((prev) => [...prev, ...newWords]);
     };
 
     const interval = setInterval(() => {
@@ -116,13 +116,13 @@ function App() {
     if (!gameStarted) return;
 
     const fall = setInterval(() => {
-      setFallingWords(prev => {
+      setFallingWords((prev) => {
         const survived = [];
-        prev.forEach(w => {
+        prev.forEach((w) => {
           const newTop = w.top + w.speed;
           if (newTop >= GAME_HEIGHT - 30) {
             if (!w.hit) {
-              setLives(l => Math.max(l - 1, 0));
+              setLives((l) => Math.max(l - 1, 0));
               w.hit = true;
             }
           } else {
@@ -139,9 +139,9 @@ function App() {
   // Input ve WPM hesaplama
   const handleInput = (e) => {
     setInput(e.target.value);
-    const match = fallingWords.find(w => w.word === e.target.value.trim());
+    const match = fallingWords.find((w) => w.word === e.target.value.trim());
     if (match) {
-      setFallingWords(prev => prev.filter(w => w !== match));
+      setFallingWords((prev) => prev.filter((w) => w !== match));
       totalTyped.current += match.word.length;
       const elapsedMinutes = Math.max(elapsedRef.current / 60, 1 / 60);
       setWpm(Math.round(totalTyped.current / 5 / elapsedMinutes));
@@ -154,9 +154,15 @@ function App() {
       <h1 className="game-title">Klavye Hız Testi</h1>
 
       {!gameStarted && (
-        <button className="start-btn" onClick={startGame}>
-          ▶ Başlat
-        </button>
+        <>
+          <button className="start-btn" onClick={startGame}>
+            ▶ Başlat
+          </button>
+          <p className="beta-info">
+            ⚠️ Beta Version! Currently only Turkish is supported. Stay tuned —
+            you won’t regret it!
+          </p>
+        </>
       )}
 
       {gameStarted && lives > 0 && (
@@ -167,9 +173,16 @@ function App() {
             <span>⏱️ {elapsedTime}s</span>
           </div>
 
-          <div className="game-container" style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}>
+          <div
+            className="game-container"
+            style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}
+          >
             {fallingWords.map((w, i) => (
-              <div key={i} className="word" style={{ top: w.top, left: w.left }}>
+              <div
+                key={i}
+                className="word"
+                style={{ top: w.top, left: w.left }}
+              >
                 {w.word}
               </div>
             ))}
