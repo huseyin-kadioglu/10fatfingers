@@ -19,6 +19,7 @@ function App() {
   const totalTyped = useRef(0);
   const elapsedRef = useRef(0);
   const timerRef = useRef(null);
+  const inputRef = useRef(null);
 
   // Başlat
   const startGame = () => {
@@ -31,6 +32,10 @@ function App() {
     elapsedRef.current = 0;
     setElapsedTime(0);
     setGameStarted(true);
+
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
   };
 
   // Visibility / Tab değişimi kontrolü
@@ -188,6 +193,7 @@ function App() {
           </div>
 
           <input
+            ref={inputRef} // 🔑 burası eklendi
             type="text"
             value={input}
             onChange={handleInput}
