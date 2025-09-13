@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import "./App.css";
-
 import WORDS from "./data/turkish_words.json";
 
 function App() {
@@ -13,7 +12,6 @@ function App() {
   const [gameStarted, setGameStarted] = useState(false);
   const [lives, setLives] = useState(5);
   const [elapsedTime, setElapsedTime] = useState(0);
-  const [wordsPerInterval, setWordsPerInterval] = useState(1);
 
   const totalTyped = useRef(0);
   const elapsedRef = useRef(0);
@@ -26,7 +24,6 @@ function App() {
     setInput("");
     setWpm(0);
     setLives(5);
-    setWordsPerInterval(1);
     totalTyped.current = 0;
     elapsedRef.current = 0;
     setElapsedTime(0);
@@ -37,7 +34,7 @@ function App() {
     }, 0);
   };
 
-  // Visibility / Tab değişimi kontrolü
+  // Tab değişince oyunu durdur
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
@@ -57,16 +54,12 @@ function App() {
     timerRef.current = setInterval(() => {
       elapsedRef.current += 1;
       setElapsedTime(elapsedRef.current);
-
-      if (elapsedRef.current > 20 && elapsedRef.current % 15 === 0) {
-        setWordsPerInterval((prev) => prev + 1);
-      }
     }, 1000);
 
     return () => clearInterval(timerRef.current);
   }, [gameStarted]);
 
-  // Can sıfırlama ve oyun bitirme
+  // Can bitince oyun durur
   useEffect(() => {
     if (lives === 0 && gameStarted) {
       setGameStarted(false);
@@ -74,14 +67,28 @@ function App() {
     }
   }, [lives, gameStarted]);
 
-  // Kelime ekleme
+  // Kelime ekleme (dalga mantığı)
   useEffect(() => {
     if (!gameStarted) return;
 
-    const addWord = () => {
+    const spawnWords = () => {
+      const time = elapsedRef.current;
+
+      let count, speedFactor;
+      if (time < 20) {
+        count = 1;
+        speedFactor = 1;
+      } else if (time < 60) {
+        count = 2;
+        speedFactor = 1.3;
+      } else {
+        count = 3;
+        speedFactor = 1.1;
+      }
+
       const newWords = [];
       const positions = [];
-      for (let i = 0; i < wordsPerInterval; i++) {
+      for (let i = 0; i < count; i++) {
         const word = WORDS[Math.floor(Math.random() * WORDS.length)];
         let left;
         let tries = 0;
@@ -91,33 +98,31 @@ function App() {
         } while (positions.some((p) => Math.abs(p - left) < 80) && tries < 10);
         positions.push(left);
 
-        const speed = 0.5 + Math.random() * 1 + elapsedRef.current * 0.02;
-        newWords.push({ word, top: 0, left, speed });
+        const baseSpeed = 0.5 + Math.random() * 1;
+        newWords.push({ word, top: 0, left, speed: baseSpeed * speedFactor });
       }
-      setFallingWords((prev) => [...prev, ...newWords]);
+      setFallingWords(prev => [...prev, ...newWords]);
     };
 
-    addWord();
+    const interval = setInterval(() => {
+      spawnWords();
+    }, 1000); // 1 saniyede bir spawn
 
-    const interval = setInterval(
-      addWord,
-      Math.max(2000 - elapsedRef.current * 10, 500)
-    );
     return () => clearInterval(interval);
-  }, [gameStarted, wordsPerInterval]);
+  }, [gameStarted, elapsedTime]);
 
   // Kelimeleri düşür
   useEffect(() => {
     if (!gameStarted) return;
 
     const fall = setInterval(() => {
-      setFallingWords((prev) => {
+      setFallingWords(prev => {
         const survived = [];
-        prev.forEach((w) => {
+        prev.forEach(w => {
           const newTop = w.top + w.speed;
           if (newTop >= GAME_HEIGHT - 30) {
             if (!w.hit) {
-              setLives((l) => Math.max(l - 1, 0));
+              setLives(l => Math.max(l - 1, 0));
               w.hit = true;
             }
           } else {
@@ -131,12 +136,12 @@ function App() {
     return () => clearInterval(fall);
   }, [gameStarted]);
 
-  // Input ve WPM
+  // Input ve WPM hesaplama
   const handleInput = (e) => {
     setInput(e.target.value);
-    const match = fallingWords.find((w) => w.word === e.target.value.trim());
+    const match = fallingWords.find(w => w.word === e.target.value.trim());
     if (match) {
-      setFallingWords((prev) => prev.filter((w) => w !== match));
+      setFallingWords(prev => prev.filter(w => w !== match));
       totalTyped.current += match.word.length;
       const elapsedMinutes = Math.max(elapsedRef.current / 60, 1 / 60);
       setWpm(Math.round(totalTyped.current / 5 / elapsedMinutes));
@@ -162,23 +167,16 @@ function App() {
             <span>⏱️ {elapsedTime}s</span>
           </div>
 
-          <div
-            className="game-container"
-            style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}
-          >
+          <div className="game-container" style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}>
             {fallingWords.map((w, i) => (
-              <div
-                key={i}
-                className="word"
-                style={{ top: w.top, left: w.left }}
-              >
+              <div key={i} className="word" style={{ top: w.top, left: w.left }}>
                 {w.word}
               </div>
             ))}
           </div>
 
           <input
-            ref={inputRef} // 🔑 burası eklendi
+            ref={inputRef}
             type="text"
             value={input}
             onChange={handleInput}
@@ -201,27 +199,6 @@ function App() {
             <p className="game-over-text">
               Hemen arkadaşlarınla paylaş ve onlarla rekabet et!
             </p>
-
-            <div className="share-buttons">
-              <a
-                href={`https://api.whatsapp.com/send?text=Ben ${elapsedTime} saniye dayanabildim ve WPM'im ${wpm}! Sen ne kadar dayanabilirsin? Oyna: https://typingrush.com.tr`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="share-btn whatsapp-btn"
-              >
-                WhatsApp
-              </a>
-
-              <a
-                href={`https://twitter.com/intent/tweet?text=Ben ${elapsedTime} saniye dayanabildim ve WPM'im ${wpm}! Sen ne kadar dayanabilirsin? Oyna: https://typingrush.com.tr`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="share-btn twitter-btn"
-              >
-                Twitter
-              </a>
-            </div>
-
             <button
               className="start-btn play-again-btn"
               onClick={() => {
