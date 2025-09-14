@@ -3,20 +3,34 @@ import "./App.css";
 import WORDS from "./data/turkish_words.json";
 
 function App() {
-  const GAME_WIDTH = 900;
-  const GAME_HEIGHT = 600;
-
   const [fallingWords, setFallingWords] = useState([]);
   const [input, setInput] = useState("");
   const [wpm, setWpm] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
   const [lives, setLives] = useState(5);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [gameSize, setGameSize] = useState({ width: 900, height: 600 });
 
   const totalTyped = useRef(0);
   const elapsedRef = useRef(0);
   const timerRef = useRef(null);
   const inputRef = useRef(null);
+
+  const containerRef = useRef(null);
+
+  // Resize listener
+  useEffect(() => {
+    const handleResize = () => {
+      const isMobile = window.innerWidth < 768;
+      setGameSize({
+        width: isMobile ? 320 : 900,
+        height: isMobile ? 450 : 600,
+      });
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Başlat
   const startGame = () => {
@@ -29,9 +43,7 @@ function App() {
     setElapsedTime(0);
     setGameStarted(true);
 
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 0);
+    setTimeout(() => inputRef.current?.focus(), 0);
   };
 
   // Tab değişince oyunu durdur
@@ -93,7 +105,7 @@ function App() {
         let left;
         let tries = 0;
         do {
-          left = Math.random() * (GAME_WIDTH - 100);
+          left = Math.random() * (gameSize.width - 100);
           tries++;
         } while (positions.some((p) => Math.abs(p - left) < 80) && tries < 10);
         positions.push(left);
@@ -104,12 +116,9 @@ function App() {
       setFallingWords((prev) => [...prev, ...newWords]);
     };
 
-    const interval = setInterval(() => {
-      spawnWords();
-    }, 1000); // 1 saniyede bir spawn
-
+    const interval = setInterval(() => spawnWords(), 1000);
     return () => clearInterval(interval);
-  }, [gameStarted, elapsedTime]);
+  }, [gameStarted, gameSize, elapsedTime]);
 
   // Kelimeleri düşür
   useEffect(() => {
@@ -120,7 +129,7 @@ function App() {
         const survived = [];
         prev.forEach((w) => {
           const newTop = w.top + w.speed;
-          if (newTop >= GAME_HEIGHT - 30) {
+          if (newTop >= gameSize.height - 30) {
             if (!w.hit) {
               setLives((l) => Math.max(l - 1, 0));
               w.hit = true;
@@ -134,7 +143,7 @@ function App() {
     }, 50);
 
     return () => clearInterval(fall);
-  }, [gameStarted]);
+  }, [gameStarted, gameSize]);
 
   // Input ve WPM hesaplama
   const handleInput = (e) => {
@@ -159,8 +168,8 @@ function App() {
             ▶ Başlat
           </button>
           <p className="beta-info">
-            ⚠️ Beta Version! Currently only Turkish is supported. Stay tuned —
-            you won’t regret it!
+            ⚠️ Beta Version! Currently only Turkish is supported. Stay tuned — you
+            won’t regret it!
           </p>
         </>
       )}
@@ -174,8 +183,9 @@ function App() {
           </div>
 
           <div
+            ref={containerRef}
             className="game-container"
-            style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}
+            style={{ width: gameSize.width, height: gameSize.height }}
           >
             {fallingWords.map((w, i) => (
               <div
