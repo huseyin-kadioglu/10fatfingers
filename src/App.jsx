@@ -32,7 +32,7 @@ function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Başlat
+  // Start Game
   const startGame = () => {
     setFallingWords([]);
     setInput("");
@@ -46,7 +46,7 @@ function App() {
     setTimeout(() => inputRef.current?.focus(), 0);
   };
 
-  // Tab değişince oyunu durdur
+  // Tab change => stop game
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
@@ -59,7 +59,7 @@ function App() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
-  // Zaman sayacı
+  // Timer
   useEffect(() => {
     if (!gameStarted) return;
 
@@ -71,7 +71,7 @@ function App() {
     return () => clearInterval(timerRef.current);
   }, [gameStarted]);
 
-  // Can bitince oyun durur
+  // Stop game if lives=0
   useEffect(() => {
     if (lives === 0 && gameStarted) {
       setGameStarted(false);
@@ -79,7 +79,7 @@ function App() {
     }
   }, [lives, gameStarted]);
 
-  // Kelime ekleme (dalga mantığı)
+  // Spawn words
   useEffect(() => {
     if (!gameStarted) return;
 
@@ -102,7 +102,7 @@ function App() {
       const positions = [];
       for (let i = 0; i < count; i++) {
         const word = WORDS[Math.floor(Math.random() * WORDS.length)];
-        const wordWidth = word.length * 14; // yaklaşık piksel genişliği
+        const wordWidth = word.length * 14; // tahmini piksel genişliği
         let left;
         let tries = 0;
 
@@ -127,7 +127,7 @@ function App() {
     return () => clearInterval(interval);
   }, [gameStarted, gameSize, elapsedTime]);
 
-  // Kelimeleri düşür
+  // Falling words
   useEffect(() => {
     if (!gameStarted) return;
 
@@ -152,11 +152,22 @@ function App() {
     return () => clearInterval(fall);
   }, [gameStarted, gameSize]);
 
-  // Input ve WPM hesaplama (küçük harf)
+  const whatsappLink = () => {
+    const text = `Ben ${wpm} WPM ile Klavye Hız Testinde oynadım! Sen de dene: ${window.location.href}`;
+    if (/Mobi|Android/i.test(navigator.userAgent)) {
+      // Mobil cihaz
+      return `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    } else {
+      // Web
+      return `https://web.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    }
+  };
+
+  // Handle input (lowercase only)
   const handleInput = (e) => {
-    const value = e.target.value.toLowerCase(); // küçük harfe çevir
-    setInput(value);
-    const match = fallingWords.find((w) => w.word === value.trim());
+    const val = e.target.value.toLowerCase();
+    setInput(val);
+    const match = fallingWords.find((w) => w.word === val.trim());
     if (match) {
       setFallingWords((prev) => prev.filter((w) => w !== match));
       totalTyped.current += match.word.length;
@@ -176,7 +187,8 @@ function App() {
             ▶ Başlat
           </button>
           <p className="beta-info">
-            ⚠️ Beta Version! Currently only Turkish is supported. Stay tuned — you won’t regret it!
+            ⚠️ Beta Version! Currently only Turkish is supported. Stay tuned —
+            you won’t regret it!
           </p>
         </>
       )}
@@ -212,7 +224,6 @@ function App() {
             onChange={handleInput}
             placeholder="buraya yaz..."
             className="typing-input"
-            style={{ textTransform: "lowercase", fontSize: 20, padding: 10 }}
           />
         </>
       )}
@@ -230,12 +241,33 @@ function App() {
             <p className="game-over-text">
               Hemen arkadaşlarınla paylaş ve onlarla rekabet et!
             </p>
+
+            <div className="share-buttons">
+              <a
+                className="whatsapp-btn"
+                href={whatsappLink()}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                WhatsApp
+              </a>
+              <a
+                className="twitter-btn"
+                href={`https://twitter.com/intent/tweet?text=Ben ${wpm} WPM ile Klavye Hız Testinde oynadım! Sen de dene: ${window.location.href}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Twitter
+              </a>
+            </div>
+
             <button
               className="start-btn play-again-btn"
               onClick={() => {
                 setElapsedTime(0);
                 startGame();
               }}
+              style={{ marginTop: "20px" }}
             >
               ↻ Tekrar Oyna
             </button>
