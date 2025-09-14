@@ -102,17 +102,24 @@ function App() {
       const positions = [];
       for (let i = 0; i < count; i++) {
         const word = WORDS[Math.floor(Math.random() * WORDS.length)];
+        const wordWidth = word.length * 14; // yaklaşık piksel genişliği
         let left;
         let tries = 0;
+
         do {
-          left = Math.random() * (gameSize.width - 100);
+          left = Math.random() * Math.max(gameSize.width - wordWidth, 0);
           tries++;
-        } while (positions.some((p) => Math.abs(p - left) < 80) && tries < 10);
+        } while (
+          positions.some((p, idx) => Math.abs(p - left) < wordWidth + 20) &&
+          tries < 10
+        );
+
         positions.push(left);
 
         const baseSpeed = 0.5 + Math.random() * 1;
         newWords.push({ word, top: 0, left, speed: baseSpeed * speedFactor });
       }
+
       setFallingWords((prev) => [...prev, ...newWords]);
     };
 
@@ -145,10 +152,11 @@ function App() {
     return () => clearInterval(fall);
   }, [gameStarted, gameSize]);
 
-  // Input ve WPM hesaplama
+  // Input ve WPM hesaplama (küçük harf)
   const handleInput = (e) => {
-    setInput(e.target.value);
-    const match = fallingWords.find((w) => w.word === e.target.value.trim());
+    const value = e.target.value.toLowerCase(); // küçük harfe çevir
+    setInput(value);
+    const match = fallingWords.find((w) => w.word === value.trim());
     if (match) {
       setFallingWords((prev) => prev.filter((w) => w !== match));
       totalTyped.current += match.word.length;
@@ -168,8 +176,7 @@ function App() {
             ▶ Başlat
           </button>
           <p className="beta-info">
-            ⚠️ Beta Version! Currently only Turkish is supported. Stay tuned — you
-            won’t regret it!
+            ⚠️ Beta Version! Currently only Turkish is supported. Stay tuned — you won’t regret it!
           </p>
         </>
       )}
@@ -203,8 +210,9 @@ function App() {
             type="text"
             value={input}
             onChange={handleInput}
-            placeholder="Buraya yaz..."
+            placeholder="buraya yaz..."
             className="typing-input"
+            style={{ textTransform: "lowercase", fontSize: 20, padding: 10 }}
           />
         </>
       )}
