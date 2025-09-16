@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import "./App.css";
 import WORDS from "./data/turkish_words.json";
+import FallingWords from "./FallingWords";
+import { StartScreen } from "./StartScreen";
+import WpmGame from "./WpmGame";
 
 function App() {
+  const [mode, setMode] = useState(null); // "falling" | "wpm"
   const [fallingWords, setFallingWords] = useState([]);
   const [input, setInput] = useState("");
   const [wpm, setWpm] = useState(0);
@@ -15,10 +19,9 @@ function App() {
   const elapsedRef = useRef(0);
   const timerRef = useRef(null);
   const inputRef = useRef(null);
-
   const containerRef = useRef(null);
 
-  // Resize listener
+  // === Resize Listener ===
   useEffect(() => {
     const handleResize = () => {
       const isMobile = window.innerWidth < 768;
@@ -32,8 +35,8 @@ function App() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Start Game
-  const startGame = () => {
+  // === FALLING WORDS GAME ===
+  const startFallingGame = () => {
     setFallingWords([]);
     setInput("");
     setWpm(0);
@@ -42,11 +45,11 @@ function App() {
     elapsedRef.current = 0;
     setElapsedTime(0);
     setGameStarted(true);
-
+    setMode("falling");
     setTimeout(() => inputRef.current?.focus(), 0);
   };
 
-  // Tab change => stop game
+  // Tab change stop game
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
@@ -62,12 +65,10 @@ function App() {
   // Timer
   useEffect(() => {
     if (!gameStarted) return;
-
     timerRef.current = setInterval(() => {
       elapsedRef.current += 1;
       setElapsedTime(elapsedRef.current);
     }, 1000);
-
     return () => clearInterval(timerRef.current);
   }, [gameStarted]);
 
@@ -81,11 +82,10 @@ function App() {
 
   // Spawn words
   useEffect(() => {
-    if (!gameStarted) return;
+    if (!gameStarted || mode !== "falling") return;
 
     const spawnWords = () => {
       const time = elapsedRef.current;
-
       let count, speedFactor;
       if (time < 20) {
         count = 1;
@@ -102,35 +102,30 @@ function App() {
       const positions = [];
       for (let i = 0; i < count; i++) {
         const word = WORDS[Math.floor(Math.random() * WORDS.length)];
-        const wordWidth = word.length * 14; // tahmini piksel genişliği
+        const wordWidth = word.length * 14;
         let left;
         let tries = 0;
-
         do {
           left = Math.random() * Math.max(gameSize.width - wordWidth, 0);
           tries++;
         } while (
-          positions.some((p, idx) => Math.abs(p - left) < wordWidth + 20) &&
+          positions.some((p) => Math.abs(p - left) < wordWidth + 20) &&
           tries < 10
         );
-
         positions.push(left);
-
         const baseSpeed = 0.5 + Math.random() * 1;
         newWords.push({ word, top: 0, left, speed: baseSpeed * speedFactor });
       }
-
       setFallingWords((prev) => [...prev, ...newWords]);
     };
 
     const interval = setInterval(() => spawnWords(), 1000);
     return () => clearInterval(interval);
-  }, [gameStarted, gameSize, elapsedTime]);
+  }, [gameStarted, gameSize, elapsedTime, mode]);
 
-  // Falling words
+  // Falling movement
   useEffect(() => {
-    if (!gameStarted) return;
-
+    if (!gameStarted || mode !== "falling") return;
     const fall = setInterval(() => {
       setFallingWords((prev) => {
         const survived = [];
@@ -148,22 +143,9 @@ function App() {
         return survived;
       });
     }, 50);
-
     return () => clearInterval(fall);
-  }, [gameStarted, gameSize]);
+  }, [gameStarted, gameSize, mode]);
 
-  const whatsappLink = () => {
-    const text = `Ben ${wpm} WPM ile Klavye Hız Testinde oynadım! Sen de dene: ${window.location.href}`;
-    if (/Mobi|Android/i.test(navigator.userAgent)) {
-      // Mobil cihaz
-      return `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-    } else {
-      // Web
-      return `https://web.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-    }
-  };
-
-  // Handle input (lowercase only)
   const handleInput = (e) => {
     const val = e.target.value.toLowerCase();
     setInput(val);
@@ -177,103 +159,64 @@ function App() {
     }
   };
 
+  // === LEARN WPM GAME ===
+  const [wpmInput, setWpmInput] = useState("");
+  const [wpmTimeLeft, setWpmTimeLeft] = useState(60);
+  const [wpmActive, setWpmActive] = useState(false);
+  const sampleText =
+    "Merhaba bu bir test metnidir. Burada yazma hızınızı ölçebilirsiniz.";
+
+  const startWpmTest = () => {
+    setMode("wpm");
+    setWpmInput("");
+    setWpm(0);
+    setWpmTimeLeft(60);
+    setWpmActive(true);
+
+    const timer = setInterval(() => {
+      setWpmTimeLeft((t) => {
+        if (t <= 1) {
+          clearInterval(timer);
+          setWpmActive(false);
+          const wordsTyped = wpmInput.trim().split(/\s+/).length;
+          setWpm(wordsTyped);
+          return 0;
+        }
+        return t - 1;
+      });
+    }, 1000);
+  };
+
+  // === UI ===
   return (
     <div className="app">
-      <h1 className="game-title">Klavye Hız Testi</h1>
-
-      {!gameStarted && (
-        <>
-          <button className="start-btn" onClick={startGame}>
-            ▶ Başlat
-          </button>
-          <p className="beta-info">
-            ⚠️ Beta Version! Currently only Turkish is supported. Stay tuned —
-            you won’t regret it!
-          </p>
-        </>
+      {!mode && (
+        <StartScreen
+          startFallingGame={startFallingGame}
+          //startWpmTest={startWpmTest}
+        />
       )}
 
-      {gameStarted && lives > 0 && (
-        <>
-          <div className="info-bar">
-            <span>❤️ {lives}</span>
-            <span>WPM: {wpm}</span>
-            <span>⏱️ {elapsedTime}s</span>
-          </div>
-
-          <div
-            ref={containerRef}
-            className="game-container"
-            style={{ width: gameSize.width, height: gameSize.height }}
-          >
-            {fallingWords.map((w, i) => (
-              <div
-                key={i}
-                className="word"
-                style={{ top: w.top, left: w.left }}
-              >
-                {w.word}
-              </div>
-            ))}
-          </div>
-
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={handleInput}
-            placeholder="buraya yaz..."
-            className="typing-input"
-          />
-        </>
+      {/* Falling Words Mode */}
+      {mode === "falling" && gameStarted && lives > 0 && (
+        <FallingWords
+          fallingWords={fallingWords}
+          gameSize={gameSize}
+          lives={lives}
+          wpm={wpm}
+          elapsedTime={elapsedTime}
+          containerRef={containerRef}
+          inputRef={inputRef}
+          input={input}
+          handleInput={handleInput}
+          gameStarted={gameStarted}
+          totalTyped={totalTyped}
+          startFallingGame={startFallingGame}
+        />
       )}
 
-      {(!gameStarted || lives === 0) && elapsedTime > 0 && (
-        <div className="game-over-overlay">
-          <div className="game-over-dialog">
-            <h1>Klavye Hız Testi</h1>
-            <p className="game-over-text">
-              Bu oyunda <strong>{elapsedTime}</strong> saniye dayanabildiniz.
-            </p>
-            <p className="game-over-text">
-              WPM: <strong>{wpm}</strong>
-            </p>
-            <p className="game-over-text">
-              Hemen arkadaşlarınla paylaş ve onlarla rekabet et!
-            </p>
-
-            <div className="share-buttons">
-              <a
-                className="whatsapp-btn"
-                href={whatsappLink()}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                WhatsApp
-              </a>
-              <a
-                className="twitter-btn"
-                href={`https://twitter.com/intent/tweet?text=Ben ${wpm} WPM ile Klavye Hız Testinde oynadım! Sen de dene: ${window.location.href}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Twitter
-              </a>
-            </div>
-
-            <button
-              className="start-btn play-again-btn"
-              onClick={() => {
-                setElapsedTime(0);
-                startGame();
-              }}
-              style={{ marginTop: "20px" }}
-            >
-              ↻ Tekrar Oyna
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Learn WPM Mode */}
+      {/* {mode === "wpm" && <WpmGame onExit={() => setMode(null)} />} */}
     </div>
   );
 }
