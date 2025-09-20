@@ -11,6 +11,7 @@ function App() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [gameSize, setGameSize] = useState({ width: 900, height: 600 });
   const [selectedTab, setSelectedTab] = useState(null);
+  const [gameOver, setGameOver] = useState(false);
 
   const totalTyped = useRef(0);
   const elapsedRef = useRef(0);
@@ -39,6 +40,7 @@ function App() {
     setInput("");
     setWpm(0);
     setLives(5);
+    setGameOver(false);
     totalTyped.current = 0;
     elapsedRef.current = 0;
     setElapsedTime(0);
@@ -47,18 +49,20 @@ function App() {
     setTimeout(() => inputRef.current?.focus(), 0);
   };
 
-  // Tab change => stop game
+  // Tarayıcı tab değişimi → game over
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.hidden) {
+      if (document.hidden && gameStarted) {
         setGameStarted(false);
         clearInterval(timerRef.current);
+        setGameOver(true);
       }
     };
+
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () =>
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, []);
+  }, [gameStarted]);
 
   // Timer
   useEffect(() => {
@@ -77,6 +81,7 @@ function App() {
     if (lives === 0 && gameStarted) {
       setGameStarted(false);
       clearInterval(timerRef.current);
+      setGameOver(true);
     }
   }, [lives, gameStarted]);
 
@@ -111,7 +116,7 @@ function App() {
           left = Math.random() * Math.max(gameSize.width - wordWidth, 0);
           tries++;
         } while (
-          positions.some((p, idx) => Math.abs(p - left) < wordWidth + 20) &&
+          positions.some((p) => Math.abs(p - left) < wordWidth + 20) &&
           tries < 10
         );
 
@@ -128,7 +133,7 @@ function App() {
     return () => clearInterval(interval);
   }, [gameStarted, gameSize, elapsedTime]);
 
-  // Falling words
+  // Falling words hareket
   useEffect(() => {
     if (!gameStarted) return;
 
@@ -153,18 +158,17 @@ function App() {
     return () => clearInterval(fall);
   }, [gameStarted, gameSize]);
 
+  // WhatsApp paylaşım linki
   const whatsappLink = () => {
     const text = `Ben ${wpm} WPM ile Klavye Hız Testinde oynadım! Sen de dene: ${window.location.href}`;
     if (/Mobi|Android/i.test(navigator.userAgent)) {
-      // Mobil cihaz
       return `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
     } else {
-      // Web
       return `https://web.whatsapp.com/send?text=${encodeURIComponent(text)}`;
     }
   };
 
-  // Handle input (lowercase only)
+  // Input handler
   const handleInput = (e) => {
     const val = e.target.value.toLowerCase();
     setInput(val);
@@ -182,35 +186,35 @@ function App() {
     <div className="app">
       <h1 className="game-title">Klavye Hız Testi</h1>
 
-      {/* Tab Navigation */}
-{!selectedTab && (
-  <div className="mode-select">
-    <div
-      className="mode-card falling"
-      onClick={() => {
-        setSelectedTab("falling");
-        startGame();
-      }}
-    >
-      <h2>🎯 Falling Words</h2>
-      <p>Ekrandan düşen kelimeleri yakala!</p>
-    </div>
+      {/* Tab Seçim Ekranı */}
+      {!selectedTab && (
+        <div className="mode-select">
+          <div
+            className="mode-card falling"
+            onClick={() => {
+              setSelectedTab("falling");
+              startGame();
+            }}
+          >
+            <h2>🎯 Falling Words</h2>
+            <p>Ekrandan düşen kelimeleri yakala!</p>
+          </div>
 
-    <div
-      className="mode-card wpm"
-      onClick={() => {
-        setSelectedTab("wpm");
-        startGame(); // İstersen farklı WPM start fonksiyonu yapabilirsin
-      }}
-    >
-      <h2>⌨️ WPM Testi</h2>
-      <p>Saf hızını ölç, en yüksek WPM değerine ulaş!</p>
-    </div>
-  </div>
-)}
+          <div
+            className="mode-card wpm"
+            onClick={() => {
+              setSelectedTab("wpm");
+              startGame(); // WPM için ayrı logic eklenebilir
+            }}
+          >
+            <h2>⌨️ WPM Testi</h2>
+            <p>Saf hızını ölç, en yüksek WPM değerine ulaş!</p>
+          </div>
+        </div>
+      )}
 
       {/* FALLING WORDS */}
-      {selectedTab === "falling" && lives > 0 && (
+      {selectedTab === "falling" && gameStarted && !gameOver && (
         <>
           <div className="info-bar">
             <span>❤️ {lives}</span>
@@ -246,7 +250,7 @@ function App() {
       )}
 
       {/* GAME OVER */}
-      {selectedTab === "falling" && lives === 0 && elapsedTime > 0 && (
+      {selectedTab === "falling" && gameOver && (
         <div className="game-over-overlay">
           <div className="game-over-dialog">
             <h1>Klavye Hız Testi</h1>
@@ -283,6 +287,7 @@ function App() {
               className="start-btn play-again-btn"
               onClick={() => {
                 setElapsedTime(0);
+                setGameOver(false);
                 startGame();
               }}
               style={{ marginTop: "20px" }}
