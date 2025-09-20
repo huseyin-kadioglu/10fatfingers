@@ -220,7 +220,6 @@ button.start-btn:hover {
 .tabs button:hover {
   background: #ff6f61;
 }
-
 .mode-select {
   display: flex;
   justify-content: center;
@@ -230,40 +229,47 @@ button.start-btn:hover {
 }
 
 .mode-card {
-  background: linear-gradient(135deg, #2b2b45, #1f1f2f);
-  border: 2px solid #ff6f61;
-  border-radius: 15px;
-  padding: 40px 30px;
-  width: 250px;
+  background: #1c1c2b; /* koyu gri-lacivert */
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 35px 25px;
+  width: 240px;
   cursor: pointer;
   text-align: center;
   color: #fff;
-  font-family: "Press Start 2P", monospace; /* retro arcade font istersen */
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-family: "Fira Mono", monospace;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
 
 .mode-card:hover {
-  transform: scale(1.08);
+  transform: translateY(-5px) scale(1.03);
+  border-color: #888;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
 }
 
 .mode-card h2 {
-  font-size: 20px;
-  margin-bottom: 12px;
+  font-size: 18px;
+  margin-bottom: 10px;
+  font-weight: bold;
+  color: #eaeaea;
 }
 
 .mode-card p {
   font-size: 14px;
-  opacity: 0.8;
+  color: #aaa;
+  line-height: 1.4;
 }
 
-.mode-card.falling {
+.mode-card.falling::before {
+  content: "🎯";
+  display: block;
+  font-size: 28px;
+  margin-bottom: 12px;
 }
 
-.mode-card.falling:hover {
-}
-
-.mode-card.wpm {
-}
-
-.mode-card.wpm:hover {
+.mode-card.wpm::before {
+  content: "⌨️";
+  display: block;
+  font-size: 28px;
+  margin-bottom: 12px;
 }
