@@ -10,6 +10,7 @@ function App() {
   const [lives, setLives] = useState(5);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [gameSize, setGameSize] = useState({ width: 900, height: 600 });
+  const [selectedTab, setSelectedTab] = useState(null);
 
   const totalTyped = useRef(0);
   const elapsedRef = useRef(0);
@@ -181,19 +182,35 @@ function App() {
     <div className="app">
       <h1 className="game-title">Klavye Hız Testi</h1>
 
-      {!gameStarted && (
-        <>
-          <button className="start-btn" onClick={startGame}>
-            ▶ Başlat
-          </button>
-          <p className="beta-info">
-            ⚠️ Beta Version! Currently only Turkish is supported. Stay tuned —
-            you won’t regret it!
-          </p>
-        </>
-      )}
+      {/* Tab Navigation */}
+{!selectedTab && (
+  <div className="mode-select">
+    <div
+      className="mode-card falling"
+      onClick={() => {
+        setSelectedTab("falling");
+        startGame();
+      }}
+    >
+      <h2>🎯 Falling Words</h2>
+      <p>Ekrandan düşen kelimeleri yakala!</p>
+    </div>
 
-      {gameStarted && lives > 0 && (
+    <div
+      className="mode-card wpm"
+      onClick={() => {
+        setSelectedTab("wpm");
+        startGame(); // İstersen farklı WPM start fonksiyonu yapabilirsin
+      }}
+    >
+      <h2>⌨️ WPM Testi</h2>
+      <p>Saf hızını ölç, en yüksek WPM değerine ulaş!</p>
+    </div>
+  </div>
+)}
+
+      {/* FALLING WORDS */}
+      {selectedTab === "falling" && lives > 0 && (
         <>
           <div className="info-bar">
             <span>❤️ {lives}</span>
@@ -228,7 +245,8 @@ function App() {
         </>
       )}
 
-      {(!gameStarted || lives === 0) && elapsedTime > 0 && (
+      {/* GAME OVER */}
+      {selectedTab === "falling" && lives === 0 && elapsedTime > 0 && (
         <div className="game-over-overlay">
           <div className="game-over-dialog">
             <h1>Klavye Hız Testi</h1>
@@ -272,6 +290,14 @@ function App() {
               ↻ Tekrar Oyna
             </button>
           </div>
+        </div>
+      )}
+
+      {/* WPM */}
+      {selectedTab === "wpm" && (
+        <div className="game-container">
+          <h2>⌨️ WPM Modu</h2>
+          <p>Burada WPM testini göstereceğiz.</p>
         </div>
       )}
     </div>
