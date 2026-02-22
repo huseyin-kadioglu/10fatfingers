@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import "./App.css";
 import WORDS from "./data/turkish_words.json";
+import { WorldMapQuiz, WorldMapIcon } from "./WorldMapQuiz";
 
 const getRandom = () => WORDS[Math.floor(Math.random() * WORDS.length)];
 const genWordList = (n = 100) => Array.from({ length: n }, getRandom);
@@ -505,6 +506,12 @@ function Home({ onSelect }) {
           <p>60 saniyede kaç kelime yazabilirsin?</p>
           <span className="card-tag">60 saniye</span>
         </button>
+        <button className="mode-card mode-card-map" onClick={() => onSelect("worldmap")}>
+          <div className="card-icon"><WorldMapIcon /></div>
+          <h2>Dünya Haritası</h2>
+          <p>10 dakikada kaç ülkeyi bilebilirsin?</p>
+          <span className="card-tag card-tag-blue">Coğrafya</span>
+        </button>
       </div>
     </div>
   );
@@ -527,7 +534,8 @@ function App() {
           onRestart={() => setWpmKey((k) => k + 1)}
         />
       )}
-      {mode === "falling" && <FallingWords onBack={() => setMode(null)} />}
+      {mode === "falling"  && <FallingWords onBack={() => setMode(null)} />}
+      {mode === "worldmap" && <WorldMapQuiz onBack={() => setMode(null)} />}
     </div>
   );
 }

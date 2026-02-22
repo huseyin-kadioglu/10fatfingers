@@ -687,6 +687,311 @@
 }
 
 /* ══════════════════════════════════════════════════════
+   DÜNYA HARİTASI QUİZİ
+══════════════════════════════════════════════════════ */
+
+/* Ana menü kartı */
+.mode-card-map:hover {
+  border-color: var(--blue);
+  box-shadow: 0 16px 40px rgba(137, 180, 250, 0.14);
+}
+
+.card-tag-blue {
+  background: rgba(137, 180, 250, 0.12);
+  color: var(--blue);
+}
+
+/* ── Idle / Sonuç ekranı (tam ekran) ─────────────────── */
+.wm-idle-screen,
+.wm-result-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wm-result-screen { align-items: flex-start; }
+
+.wm-map-bg {
+  position: absolute;
+  inset: 0;
+}
+
+.wm-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.wm-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 8, 20, 0.6);
+  backdrop-filter: blur(5px);
+  z-index: 20;
+}
+
+.wm-result-screen .wm-overlay { align-items: flex-start; padding-top: 24px; }
+
+.wm-start-card { max-width: 440px; }
+
+/* ── Süre seçici ─────────────────────────────────────── */
+.wm-duration-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.wm-dur-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 20px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.2s, background 0.2s;
+  min-width: 80px;
+}
+
+.wm-dur-btn:hover { border-color: var(--blue); }
+
+.wm-dur-btn.active {
+  border-color: var(--blue);
+  background: rgba(137, 180, 250, 0.12);
+}
+
+.wm-dur-label { font-size: 1rem; font-weight: 800; color: var(--text); }
+.wm-dur-tag   { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.wm-dur-btn.active .wm-dur-tag { color: var(--blue); }
+
+/* ── Yükleme / hata ──────────────────────────────────── */
+.wm-loading {
+  color: var(--blue);
+  font-size: 0.9rem;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.wm-error { color: var(--red); font-size: 0.88rem; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* ══════════════════════════════════════════════════════
+   OYUN EKRANI — WPM tarzı ortalanmış kart düzeni
+══════════════════════════════════════════════════════ */
+
+.wm-game-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 960px;
+}
+
+/* Üst bar */
+.wm-game-bar {
+  max-width: 960px;
+  margin-bottom: 14px;
+}
+
+.wm-score-badge {
+  font-size: 0.95rem;
+  color: var(--subtext);
+  font-weight: 600;
+}
+
+.wm-score-badge strong { color: var(--green); }
+.wm-score-total        { color: var(--muted); font-size: 0.82rem; }
+.wm-end-btn            { padding: 7px 14px; font-size: 0.82rem; }
+
+/* ── Harita kartı — bordered, rounded (like words-box) ─ */
+.wm-map-card {
+  width: 100%;
+  aspect-ratio: 2.3 / 1;
+  max-height: 400px;
+  min-height: 200px;
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #1c3050;
+}
+
+/* ── SVG harita renkleri ─────────────────────────────── */
+.wm-ocean {
+  fill: #1c3050;
+}
+
+.wm-graticule {
+  fill: none;
+  stroke: rgba(120, 160, 220, 0.12);
+  stroke-width: 0.4px;
+}
+
+.wm-country {
+  fill: #5a5d7a;
+  stroke: #1a1b2e;
+  stroke-width: 0.5px;
+  cursor: default;
+  transition: fill 0.2s ease;
+}
+
+.wm-country:hover {
+  fill: #7073a0;
+}
+
+.wm-country.wm-guessed {
+  fill: #3dbf72;
+  stroke: #1a1b2e;
+}
+
+/* ── Feedback overlay (harita üstünde) ───────────────── */
+.wm-feedback {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 7px 18px;
+  border-radius: 24px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  pointer-events: none;
+  white-space: nowrap;
+  animation: wm-pop 0.15s ease;
+  z-index: 10;
+}
+
+.wm-fb-success {
+  background: rgba(61, 191, 114, 0.18);
+  border: 1px solid rgba(61, 191, 114, 0.45);
+  color: #3dbf72;
+}
+
+.wm-fb-duplicate {
+  background: rgba(249, 226, 175, 0.15);
+  border: 1px solid rgba(249, 226, 175, 0.35);
+  color: var(--yellow);
+}
+
+@keyframes wm-pop {
+  from { transform: translateX(-50%) scale(0.8); opacity: 0; }
+  to   { transform: translateX(-50%) scale(1);   opacity: 1; }
+}
+
+/* ── Büyük sayaç ─────────────────────────────────────── */
+.wm-big-timer {
+  font-family: 'Courier New', monospace;
+  font-size: 3.8rem;
+  font-weight: 900;
+  letter-spacing: -3px;
+  color: var(--text);
+  text-align: center;
+  margin: 10px 0 4px;
+  line-height: 1;
+  transition: color 0.3s;
+  font-variant-numeric: tabular-nums;
+}
+
+.wm-big-timer.danger {
+  color: var(--accent);
+  animation: wm-pulse 0.65s ease-in-out infinite;
+}
+
+@keyframes wm-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+/* ── Input ───────────────────────────────────────────── */
+.wm-game-input {
+  margin-top: 4px;
+  max-width: 480px;
+}
+
+/* ══════════════════════════════════════════════════════
+   SONUÇ KARTI
+══════════════════════════════════════════════════════ */
+.wm-map-bg-dim::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 8, 20, 0.65);
+}
+
+.wm-result-card {
+  position: relative;
+  z-index: 10;
+  background: rgba(30, 30, 46, 0.97);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 40px 48px 32px;
+  text-align: center;
+  max-width: 620px;
+  width: calc(100% - 32px);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+
+.wm-big-pct {
+  font-size: 6rem;
+  font-weight: 900;
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 20px;
+  letter-spacing: -4px;
+}
+
+.wm-pct-sign {
+  font-size: 2.5rem;
+  color: var(--blue);
+  letter-spacing: 0;
+}
+
+/* ── Kaçırılan ülkeler ───────────────────────────────── */
+.wm-missed-section {
+  margin-top: 28px;
+  text-align: left;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+
+.wm-missed-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+
+.wm-missed-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.wm-missed-chip {
+  background: rgba(243, 139, 168, 0.08);
+  border: 1px solid rgba(243, 139, 168, 0.18);
+  color: var(--subtext);
+  border-radius: 14px;
+  padding: 3px 10px;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+/* ══════════════════════════════════════════════════════
    MOBİL UYUM
 ══════════════════════════════════════════════════════ */
 @media (max-width: 640px) {
