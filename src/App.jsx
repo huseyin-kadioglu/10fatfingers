@@ -223,7 +223,7 @@ function FallingWords({ onBack }) {
   const [elapsed,        setElapsed]        = useState(0);
   const [phase,          setPhase]          = useState("start");
   const [phaseIdx,       setPhaseIdx]       = useState(0);
-  const [gameSize,       setGameSize]       = useState({ width: 860, height: 500 });
+  const [gameSize,       setGameSize]       = useState({ width: 860, height: 560 });
 
   const totalChars   = useRef(0);
   const scoreRef     = useRef(0);
@@ -237,7 +237,7 @@ function FallingWords({ onBack }) {
   useEffect(() => {
     const resize = () => {
       const w = Math.min(window.innerWidth - 48, 860);
-      const h = window.innerWidth < 640 ? 360 : 500;
+      const h = window.innerWidth < 640 ? 420 : 560;
       setGameSize({ width: w, height: h });
     };
     resize();
@@ -449,21 +449,16 @@ function FallingWords({ onBack }) {
         style={{ width: gameSize.width, height: gameSize.height }}
       >
         {fallingWords.map((w) => {
-          // Tehlike rengine dönüşüm (beyaz → kırmızı, alta yaklaştıkça)
-          const p = Math.max(0, (w.top - gameSize.height * 0.55) / (gameSize.height * 0.38));
-          const r = Math.round(220 + 35  * p);
-          const g = Math.round(225 - 215 * p);
-          const b = Math.round(255 - 255 * p);
+          // CSS class ile yumuşak renk geçişi: lavanta → sarı → kırmızı
+          const ratio = w.top / gameSize.height;
+          let wordCls = "fall-word";
+          if (ratio > 0.72)      wordCls += " fw-urgent";
+          else if (ratio > 0.50) wordCls += " fw-warn";
           return (
             <div
               key={w.id}
-              className="fall-word"
-              style={{
-                top:   w.top,
-                left:  w.left,
-                color: `rgb(${r},${g},${b})`,
-                textShadow: `0 0 ${8 + p * 12}px rgba(${r},${g},${b},0.7)`,
-              }}
+              className={wordCls}
+              style={{ top: w.top, left: w.left }}
             >
               {w.word}
             </div>

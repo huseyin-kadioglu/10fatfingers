@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Arka plan -->
+  <rect width="64" height="64" rx="14" fill="#1e1e2e"/>
+
+  <!-- Klavye gövdesi -->
+  <rect x="7" y="20" width="50" height="30" rx="5" fill="#2a2a3e"/>
+  <rect x="7" y="20" width="50" height="30" rx="5" fill="none" stroke="#f38ba8" stroke-width="1.5"/>
+
+  <!-- Tuş satırı 1 (4 tuş) -->
+  <rect x="13" y="25" width="7" height="6" rx="1.5" fill="#f38ba8" opacity="0.9"/>
+  <rect x="23" y="25" width="7" height="6" rx="1.5" fill="#f38ba8" opacity="0.9"/>
+  <rect x="33" y="25" width="7" height="6" rx="1.5" fill="#f38ba8" opacity="0.9"/>
+  <rect x="43" y="25" width="7" height="6" rx="1.5" fill="#f38ba8" opacity="0.9"/>
+
+  <!-- Tuş satırı 2 (3 tuş + boşluk) -->
+  <rect x="16" y="33" width="7" height="6" rx="1.5" fill="#cdd6f4" opacity="0.6"/>
+  <rect x="26" y="33" width="7" height="6" rx="1.5" fill="#cdd6f4" opacity="0.6"/>
+  <rect x="36" y="33" width="7" height="6" rx="1.5" fill="#cdd6f4" opacity="0.6"/>
+
+  <!-- Space bar -->
+  <rect x="18" y="41" width="28" height="5" rx="1.5" fill="#f38ba8" opacity="0.55"/>
+
+  <!-- "10f" yazısı sol üstte küçük -->
+  <text x="11" y="16"
+        font-family="'Arial Black', 'Segoe UI', sans-serif"
+        font-weight="900"
+        font-size="9"
+        fill="#f38ba8"
+        letter-spacing="-0.3">10f</text>
+</svg>

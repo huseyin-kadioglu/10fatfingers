@@ -339,30 +339,43 @@
   padding: 24px;
 }
 
-/* Oyun alanı */
+/* Oyun alanı — grid kaldırıldı, sade koyu */
 .fall-arena {
   position: relative;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(8, 8, 22, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--radius-md);
   overflow: hidden;
   margin: 0 auto;
-  /* Subtle grid */
-  background-image:
-    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
-  background-size: 60px 60px;
 }
 
-/* Düşen kelimeler — kart YOK, saf metin + glow */
+/* Düşen kelimeler — saf metin, okunması kolay */
 .fall-word {
   position: absolute;
-  font-size: 1.15rem;
+  font-size: 1.35rem;
   font-weight: 700;
-  font-family: "Courier New", monospace;
+  font-family: 'Segoe UI', system-ui, sans-serif;
   white-space: nowrap;
-  letter-spacing: 0.5px;
-  /* color ve textShadow inline olarak set ediliyor */
+  letter-spacing: 0.6px;
+
+  /* Normal durum: sıcak lavanta-beyaz, göz yormaz */
+  color: #dde4ff;
+  text-shadow: 0 0 14px rgba(180, 195, 255, 0.35);
+
+  /* CSS geçişi — smooth renk değişimi */
+  transition: color 0.4s ease, text-shadow 0.4s ease;
+}
+
+/* Tehlike eşiği 1 — sarı-turuncu (%50 altı) */
+.fall-word.fw-warn {
+  color: #f9e2af;
+  text-shadow: 0 0 18px rgba(249, 226, 175, 0.55);
+}
+
+/* Tehlike eşiği 2 — kırmızı (%72 altı) */
+.fall-word.fw-urgent {
+  color: #f38ba8;
+  text-shadow: 0 0 22px rgba(243, 139, 168, 0.7);
 }
 
 /* Alt tehlike çizgisi */
