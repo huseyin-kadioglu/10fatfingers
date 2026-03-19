@@ -2,25 +2,26 @@ import { useState, useEffect, useRef } from "react";
 import "./App.css";
 import WORDS from "./data/turkish_words.json";
 import { WorldMapQuiz, WorldMapIcon } from "./WorldMapQuiz";
+import { saveScore, getLeaderboards } from "./scores";
 
 const getRandom = () => WORDS[Math.floor(Math.random() * WORDS.length)];
 const genWordList = (n = 100) => Array.from({ length: n }, getRandom);
 
 // ── Falling Words zorluk fazları ─────────────────────────────────────────────
-// speed = piksel / tick (50ms → speed 4 = 80px/s = ~6s düşüş 500px'de)
 const PHASES = [
-  { maxTime: 25,       spawnMs: 2600, count: 1, sMin: 3.5, sMax: 5.5,  label: "Kolay",      color: "#4ade80" },
-  { maxTime: 50,       spawnMs: 2100, count: 1, sMin: 4.5, sMax: 7,    label: "Başlangıç",  color: "#60a5fa" },
-  { maxTime: 80,       spawnMs: 1700, count: 2, sMin: 5.5, sMax: 9,    label: "Orta",       color: "#c084fc" },
-  { maxTime: 120,      spawnMs: 1300, count: 2, sMin: 7,   sMax: 11,   label: "İleri",      color: "#fbbf24" },
-  { maxTime: 180,      spawnMs: 1000, count: 3, sMin: 8.5, sMax: 13,   label: "Zor",        color: "#f97316" },
-  { maxTime: Infinity, spawnMs: 700,  count: 3, sMin: 11,  sMax: 16,   label: "Efsane",     color: "#f43f5e" },
+  { maxTime: 25,       spawnMs: 3100, count: 1, sMin: 2.8, sMax: 4.2,  label: "Kolay",      color: "#4ade80" },
+  { maxTime: 50,       spawnMs: 2500, count: 1, sMin: 3.4, sMax: 5.3,  label: "Başlangıç",  color: "#60a5fa" },
+  { maxTime: 80,       spawnMs: 2050, count: 2, sMin: 4.2, sMax: 6.8,  label: "Orta",       color: "#c084fc" },
+  { maxTime: 120,      spawnMs: 1550, count: 2, sMin: 5.3, sMax: 8.3,  label: "İleri",      color: "#fbbf24" },
+  { maxTime: 180,      spawnMs: 1200, count: 3, sMin: 6.5, sMax: 9.8,  label: "Zor",        color: "#f97316" },
+  { maxTime: Infinity, spawnMs: 850,  count: 3, sMin: 8.3, sMax: 12,   label: "Efsane",     color: "#f43f5e" },
 ];
 
-const getPhase    = (t)  => PHASES.find((p) => t < p.maxTime);
-const getPhaseIdx = (t)  => PHASES.findIndex((p) => t < p.maxTime) === -1
-  ? PHASES.length - 1
-  : PHASES.findIndex((p) => t < p.maxTime);
+const getPhase    = (t) => PHASES.find((p) => t < p.maxTime);
+const getPhaseIdx = (t) => {
+  const i = PHASES.findIndex((p) => t < p.maxTime);
+  return i === -1 ? PHASES.length - 1 : i;
+};
 
 const getRank = (t) => {
   if (t < 30)  return { label: "Acemi",      color: "#94a3b8" };
@@ -37,11 +38,115 @@ function ActiveWord({ word, input }) {
     <>
       {word.split("").map((char, i) => {
         let cls = "char";
-        if (i < input.length)    cls += input[i] === char ? " char-ok" : " char-err";
+        if (i < input.length)        cls += input[i] === char ? " char-ok" : " char-err";
         else if (i === input.length) cls += " char-cursor";
         return <span key={i} className={cls}>{char}</span>;
       })}
     </>
+  );
+}
+
+// ── İsim Giriş Ekranı ────────────────────────────────────────────────────────
+function NameInputCard({ score, unit, onSave, onSkip, loading, isDark }) {
+  const [name, setName] = useState(() => localStorage.getItem("playerName") || "");
+
+  const handleSave = () => {
+    const trimmed = name.trim().slice(0, 30);
+    if (trimmed) localStorage.setItem("playerName", trimmed);
+    onSave(trimmed || "Anonim");
+  };
+
+  return (
+    <div className={`result-screen${isDark ? " falling-bg" : ""}`}>
+      <div className="result-card">
+        <p className="result-label">Skor Kaydediliyor</p>
+        <div className="big-wpm">
+          {score}<span className="wpm-unit"> {unit}</span>
+        </div>
+        <p className="name-input-hint">İsmini girerek sıralamada görün</p>
+        <input
+          className="typing-input"
+          style={{ marginTop: 0 }}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSave()}
+          placeholder="İsmin (maks. 30 karakter)…"
+          maxLength={30}
+          autoFocus
+          autoComplete="off"
+          spellCheck={false}
+        />
+        <div className="result-btns" style={{ marginTop: 16 }}>
+          <button className="btn-primary" onClick={handleSave} disabled={loading}>
+            {loading ? "Kaydediliyor…" : "Kaydet"}
+          </button>
+          <button className="btn-secondary" onClick={onSkip} disabled={loading}>
+            Atla
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Sıralama Bölümü ──────────────────────────────────────────────────────────
+function LeaderboardSection({ data, unit, myScore }) {
+  const [tab, setTab] = useState("week");
+  if (!data) return null;
+
+  const list    = tab === "week" ? data.topWeek : data.topAll;
+  const myRank  = tab === "week" ? data.weekRank : data.rank;
+  const total   = tab === "week" ? data.weekTotal : data.total;
+  const pct     = myRank && total > 0
+    ? Math.max(0, Math.round((1 - myRank / total) * 100))
+    : null;
+
+  return (
+    <div className="lb-section">
+      {myRank != null && (
+        <div className="lb-myrank">
+          <span className="lb-rank-num">#{myRank}</span>
+          <span className="lb-total"> / {total} kişi</span>
+          {pct !== null && (
+            <span className="lb-pct">Top %{pct}</span>
+          )}
+        </div>
+      )}
+      {!myRank && total > 0 && (
+        <div className="lb-myrank">
+          <span className="lb-total">{total} kişi oynadı</span>
+        </div>
+      )}
+      <div className="lb-tabs">
+        <button
+          className={`lb-tab${tab === "week" ? " active" : ""}`}
+          onClick={() => setTab("week")}
+        >
+          Bu Hafta
+        </button>
+        <button
+          className={`lb-tab${tab === "all" ? " active" : ""}`}
+          onClick={() => setTab("all")}
+        >
+          Tüm Zamanlar
+        </button>
+      </div>
+      <div className="lb-list">
+        {list.length === 0 && (
+          <p className="lb-empty">Henüz skor yok</p>
+        )}
+        {list.map((entry, i) => (
+          <div
+            key={entry.id}
+            className={`lb-row${entry.score === myScore && entry.name === (localStorage.getItem("playerName") || "") ? " lb-row-me" : ""}`}
+          >
+            <span className="lb-pos">{i + 1}</span>
+            <span className="lb-name">{entry.name}</span>
+            <span className="lb-score">{entry.score} {unit}</span>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -58,28 +163,26 @@ function WPMTest({ onBack, onRestart }) {
   const [started,   setStarted]  = useState(false);
   const [done,      setDone]     = useState(false);
 
-  const inputRef   = useRef(null);
-  const timerRef   = useRef(null);
-  const activeRef  = useRef(null);
-  const boxRef     = useRef(null);
+  const [nameStep,    setNameStep]    = useState("input"); // 'input' | 'loading' | 'done'
+  const [leaderboard, setLeaderboard] = useState(null);
 
-  // Karakter bazlı WPM (standart: 5 karakter = 1 kelime)
+  const inputRef  = useRef(null);
+  const timerRef  = useRef(null);
+  const activeRef = useRef(null);
+  const boxRef    = useRef(null);
+
   const correctChars = typed
     .filter((t) => t.correct)
-    .reduce((s, t) => s + t.word.length + 1, 0);  // +1 boşluk için
-  const liveWpm = elapsed > 0
-    ? Math.round((correctChars / 5) / (elapsed / 60))
-    : 0;
+    .reduce((s, t) => s + t.word.length + 1, 0);
+  const liveWpm  = elapsed > 0 ? Math.round((correctChars / 5) / (elapsed / 60)) : 0;
+  const finalWpm = Math.round((correctChars / 5) / 1);
 
-  // Aktif kelimeyi kutunun 2. satırına hizala
   useEffect(() => {
     if (!activeRef.current || !boxRef.current) return;
     const lineH = activeRef.current.offsetHeight || 54;
-    const top   = activeRef.current.offsetTop;
-    boxRef.current.scrollTop = Math.max(0, top - lineH);
+    boxRef.current.scrollTop = Math.max(0, activeRef.current.offsetTop - lineH);
   }, [idx]);
 
-  // Zamanlayıcı
   useEffect(() => {
     if (!started || done) return;
     timerRef.current = setInterval(() => {
@@ -95,13 +198,9 @@ function WPMTest({ onBack, onRestart }) {
   const handleInput = (e) => {
     const val = e.target.value;
     if (!started && val.length > 0) setStarted(true);
-
     if (val.endsWith(" ")) {
       const trimmed = val.trim();
-      setTyped((prev) => [
-        ...prev,
-        { word: words[idx], correct: trimmed === words[idx] },
-      ]);
+      setTyped((prev) => [...prev, { word: words[idx], correct: trimmed === words[idx] }]);
       setIdx((i) => i + 1);
       setInput("");
       return;
@@ -111,13 +210,58 @@ function WPMTest({ onBack, onRestart }) {
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
+  // ── İsim kaydet ─────────────────────────────────────────────────────────────
+  const handleSaveName = async (name) => {
+    console.log("[WPM] handleSaveName başladı, name:", name, "finalWpm:", finalWpm);
+    setNameStep("loading");
+    try {
+      const data = await saveScore("scores_wpm", name, finalWpm);
+      console.log("[WPM] saveScore sonucu:", data);
+      setLeaderboard(data);
+    } catch (err) {
+      console.error("[WPM] saveScore hatası:", err);
+      try {
+        const lb = await getLeaderboards("scores_wpm");
+        console.log("[WPM] fallback leaderboard:", lb);
+        setLeaderboard(lb);
+      }
+      catch (e2) { console.error("[WPM] leaderboard hatası:", e2); }
+    }
+    console.log("[WPM] nameStep done'a geçiyor");
+    setNameStep("done");
+  };
+
+  const handleSkipName = async () => {
+    console.log("[WPM] handleSkipName başladı");
+    setNameStep("loading");
+    try {
+      const lb = await getLeaderboards("scores_wpm");
+      console.log("[WPM] getLeaderboards sonucu:", lb);
+      setLeaderboard(lb);
+    }
+    catch (err) { console.error("[WPM] leaderboard hatası:", err); }
+    console.log("[WPM] nameStep done'a geçiyor");
+    setNameStep("done");
+  };
+
   // ── Sonuç ekranı ────────────────────────────────────────────────────────────
   if (done) {
-    const finalWpm = Math.round((correctChars / 5) / 1); // 60sn = 1dk
     const correctWords = typed.filter((t) => t.correct).length;
     const shareText = `60 saniyede ${finalWpm} WPM ile yazdım! Türkçe klavye hız testinde sen ne kadar yaparsın?`;
-    const waUrl  = `https://wa.me/?text=${encodeURIComponent(shareText + " " + window.location.href)}`;
-    const twUrl  = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(window.location.href)}`;
+    const waUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(shareText + " " + window.location.href)}`;
+    const twUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(window.location.href)}`;
+
+    if (nameStep === "input" || nameStep === "loading") {
+      return (
+        <NameInputCard
+          score={finalWpm}
+          unit="wpm"
+          onSave={handleSaveName}
+          onSkip={handleSkipName}
+          loading={nameStep === "loading"}
+        />
+      );
+    }
 
     return (
       <div className="result-screen">
@@ -156,6 +300,7 @@ function WPMTest({ onBack, onRestart }) {
             <button className="btn-primary" onClick={onRestart}>Tekrar Dene</button>
             <button className="btn-secondary" onClick={onBack}>Ana Menü</button>
           </div>
+          <LeaderboardSection data={leaderboard} unit="wpm" myScore={finalWpm} />
         </div>
       </div>
     );
@@ -172,21 +317,13 @@ function WPMTest({ onBack, onRestart }) {
         </div>
       </div>
 
-      <div
-        className="words-box"
-        ref={boxRef}
-        onClick={() => inputRef.current?.focus()}
-      >
+      <div className="words-box" ref={boxRef} onClick={() => inputRef.current?.focus()}>
         {words.map((word, i) => {
           let cls = "word-token";
-          if (i < idx)       cls += typed[i]?.correct ? " done-ok" : " done-err";
+          if (i < idx)        cls += typed[i]?.correct ? " done-ok" : " done-err";
           else if (i === idx) cls += " active";
           return (
-            <span
-              key={i}
-              ref={i === idx ? activeRef : null}
-              className={cls}
-            >
+            <span key={i} ref={i === idx ? activeRef : null} className={cls}>
               {i === idx ? <ActiveWord word={word} input={input} /> : word}
               {" "}
             </span>
@@ -204,10 +341,7 @@ function WPMTest({ onBack, onRestart }) {
         autoCorrect="off"
         spellCheck={false}
       />
-
-      {!started && (
-        <p className="hint-text">Yazmaya başladığında süre başlar</p>
-      )}
+      {!started && <p className="hint-text">Yazmaya başladığında süre başlar</p>}
     </div>
   );
 }
@@ -216,15 +350,18 @@ function WPMTest({ onBack, onRestart }) {
 // FALLING WORDS
 // ══════════════════════════════════════════════════════════════════════════════
 function FallingWords({ onBack }) {
-  const [fallingWords,   setFallingWords]   = useState([]);
-  const [input,          setInput]          = useState("");
-  const [wpm,            setWpm]            = useState(0);
-  const [score,          setScore]          = useState(0);
-  const [lives,          setLives]          = useState(5);
-  const [elapsed,        setElapsed]        = useState(0);
-  const [phase,          setPhase]          = useState("start");
-  const [phaseIdx,       setPhaseIdx]       = useState(0);
-  const [gameSize,       setGameSize]       = useState({ width: 860, height: 560 });
+  const [fallingWords, setFallingWords] = useState([]);
+  const [input,        setInput]        = useState("");
+  const [wpm,          setWpm]          = useState(0);
+  const [score,        setScore]        = useState(0);
+  const [lives,        setLives]        = useState(5);
+  const [elapsed,      setElapsed]      = useState(0);
+  const [phase,        setPhase]        = useState("start");
+  const [phaseIdx,     setPhaseIdx]     = useState(0);
+  const [gameSize,     setGameSize]     = useState({ width: 860, height: 560 });
+
+  const [nameStep,     setNameStep]     = useState("input");
+  const [leaderboard,  setLeaderboard]  = useState(null);
 
   const totalChars   = useRef(0);
   const scoreRef     = useRef(0);
@@ -234,7 +371,6 @@ function FallingWords({ onBack }) {
   const lastSpawnRef = useRef(0);
   const scoreMultipliers = [1, 1.5, 2, 2.5, 3.5, 5];
 
-  // Responsive boyut
   useEffect(() => {
     const resize = () => {
       const w = Math.min(window.innerWidth - 48, 860);
@@ -253,11 +389,12 @@ function FallingWords({ onBack }) {
     elapsedRef.current = 0; setElapsed(0);
     lastSpawnRef.current = 0;
     setPhaseIdx(0);
+    setNameStep("input");
+    setLeaderboard(null);
     setPhase("playing");
     setTimeout(() => inputRef.current?.focus(), 50);
   };
 
-  // Zamanlayıcı
   useEffect(() => {
     if (phase !== "playing") return;
     timerRef.current = setInterval(() => {
@@ -268,7 +405,6 @@ function FallingWords({ onBack }) {
     return () => clearInterval(timerRef.current);
   }, [phase]);
 
-  // Can sıfırınca bitiş
   useEffect(() => {
     if (lives <= 0 && phase === "playing") {
       clearInterval(timerRef.current);
@@ -276,7 +412,6 @@ function FallingWords({ onBack }) {
     }
   }, [lives, phase]);
 
-  // Kelime üretme — check her 150ms, spawnMs'e göre üret
   useEffect(() => {
     if (phase !== "playing") return;
     const tick = setInterval(() => {
@@ -297,14 +432,10 @@ function FallingWords({ onBack }) {
           tries++;
         } while (positions.some((x) => Math.abs(x - left) < wordW + 24) && tries < 10);
         positions.push(left);
-
-        const speed = p.sMin + Math.random() * (p.sMax - p.sMin);
         newWords.push({
-          id:    `${now}-${i}-${Math.random()}`,
-          word,
-          top:   0,
-          left,
-          speed,
+          id: `${now}-${i}-${Math.random()}`,
+          word, top: 0, left,
+          speed: p.sMin + Math.random() * (p.sMax - p.sMin),
         });
       }
       setFallingWords((prev) => [...prev, ...newWords]);
@@ -312,17 +443,15 @@ function FallingWords({ onBack }) {
     return () => clearInterval(tick);
   }, [phase, gameSize]);
 
-  // Düşme döngüsü — 50ms tick
   useEffect(() => {
     if (phase !== "playing") return;
     const fall = setInterval(() => {
       setFallingWords((prev) => {
-        const next = [];
-        let lost = 0;
+        const next = []; let lost = 0;
         for (const w of prev) {
           const newTop = w.top + w.speed;
-          if (newTop >= gameSize.height - 44) { lost++; }
-          else { next.push({ ...w, top: newTop }); }
+          if (newTop >= gameSize.height - 44) lost++;
+          else next.push({ ...w, top: newTop });
         }
         if (lost > 0) setLives((l) => Math.max(l - lost, 0));
         return next;
@@ -331,7 +460,6 @@ function FallingWords({ onBack }) {
     return () => clearInterval(fall);
   }, [phase, gameSize]);
 
-  // Input
   const handleInput = (e) => {
     const val = e.target.value.toLowerCase();
     setInput(val);
@@ -339,17 +467,50 @@ function FallingWords({ onBack }) {
     if (match) {
       setFallingWords((prev) => prev.filter((w) => w.id !== match.id));
       totalChars.current += match.word.length;
-      const mins = Math.max(elapsedRef.current / 60, 1 / 60);
+      const mins  = Math.max(elapsedRef.current / 60, 1 / 60);
       setWpm(Math.round((totalChars.current / 5) / mins));
       const mult   = scoreMultipliers[phaseIdx] ?? 1;
-      const points = Math.ceil(match.word.length * mult);
-      scoreRef.current += points;
+      scoreRef.current += Math.ceil(match.word.length * mult);
       setScore(scoreRef.current);
       setInput("");
     }
   };
 
   const handleBack = () => { clearInterval(timerRef.current); onBack(); };
+
+  // ── İsim kaydet ─────────────────────────────────────────────────────────────
+  const handleSaveName = async (name) => {
+    console.log("[FW] handleSaveName başladı, name:", name, "score:", score);
+    setNameStep("loading");
+    try {
+      const data = await saveScore("scores_falling", name, score);
+      console.log("[FW] saveScore sonucu:", data);
+      setLeaderboard(data);
+    } catch (err) {
+      console.error("[FW] saveScore hatası:", err);
+      try {
+        const lb = await getLeaderboards("scores_falling");
+        console.log("[FW] fallback leaderboard:", lb);
+        setLeaderboard(lb);
+      }
+      catch (e2) { console.error("[FW] leaderboard hatası:", e2); }
+    }
+    console.log("[FW] nameStep done'a geçiyor");
+    setNameStep("done");
+  };
+
+  const handleSkipName = async () => {
+    console.log("[FW] handleSkipName başladı");
+    setNameStep("loading");
+    try {
+      const lb = await getLeaderboards("scores_falling");
+      console.log("[FW] getLeaderboards sonucu:", lb);
+      setLeaderboard(lb);
+    }
+    catch (err) { console.error("[FW] leaderboard hatası:", err); }
+    console.log("[FW] nameStep done'a geçiyor");
+    setNameStep("done");
+  };
 
   // ── Başlangıç ──────────────────────────────────────────────────────────────
   if (phase === "start") {
@@ -380,9 +541,22 @@ function FallingWords({ onBack }) {
 
   // ── Oyun bitti ─────────────────────────────────────────────────────────────
   if (phase === "over") {
+    if (nameStep === "input" || nameStep === "loading") {
+      return (
+        <NameInputCard
+          score={score}
+          unit="puan"
+          onSave={handleSaveName}
+          onSkip={handleSkipName}
+          loading={nameStep === "loading"}
+          isDark
+        />
+      );
+    }
+
     const rank      = getRank(elapsed);
     const shareText = `${elapsed}sn hayatta kaldım, ${wpm} WPM, ${score} puan! Rütbe: ${rank.label}. 10fatfingers'da sen ne kadar dayanırsın?`;
-    const waUrl     = `https://wa.me/?text=${encodeURIComponent(shareText + " " + window.location.href)}`;
+    const waUrl     = `https://web.whatsapp.com/send?text=${encodeURIComponent(shareText + " " + window.location.href)}`;
     const twUrl     = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(window.location.href)}`;
 
     return (
@@ -420,6 +594,7 @@ function FallingWords({ onBack }) {
             <button className="btn-primary" onClick={startGame}>Tekrar Oyna</button>
             <button className="btn-secondary" onClick={handleBack}>Ana Menü</button>
           </div>
+          <LeaderboardSection data={leaderboard} unit="puan" myScore={score} />
         </div>
       </div>
     );
@@ -445,22 +620,14 @@ function FallingWords({ onBack }) {
         </div>
       </div>
 
-      <div
-        className="fall-arena"
-        style={{ width: gameSize.width, height: gameSize.height }}
-      >
+      <div className="fall-arena" style={{ width: gameSize.width, height: gameSize.height }}>
         {fallingWords.map((w) => {
-          // CSS class ile yumuşak renk geçişi: lavanta → sarı → kırmızı
           const ratio = w.top / gameSize.height;
           let wordCls = "fall-word";
           if (ratio > 0.72)      wordCls += " fw-urgent";
           else if (ratio > 0.50) wordCls += " fw-warn";
           return (
-            <div
-              key={w.id}
-              className={wordCls}
-              style={{ top: w.top, left: w.left }}
-            >
+            <div key={w.id} className={wordCls} style={{ top: w.top, left: w.left }}>
               {w.word}
             </div>
           );
@@ -526,8 +693,8 @@ function App() {
 
   return (
     <div className="app-root">
-      {mode === null     && <Home onSelect={setMode} />}
-      {mode === "wpm"    && (
+      {mode === null      && <Home onSelect={setMode} />}
+      {mode === "wpm"     && (
         <WPMTest
           key={wpmKey}
           onBack={() => setMode(null)}

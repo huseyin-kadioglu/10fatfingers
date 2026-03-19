@@ -5,12 +5,6 @@ import { COUNTRIES, TOTAL_COUNTRIES } from './data/countries'
 
 const MAP_URL = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json'
 
-const DURATIONS = [
-  { label: '5 dk',  secs: 300,  tag: 'Zor'    },
-  { label: '10 dk', secs: 600,  tag: 'Normal'  },
-  { label: '15 dk', secs: 900,  tag: 'Kolay'   },
-]
-
 // world-atlas bazı IDs'leri "032" gibi leading-zero string saklar,
 // bazıları integer 32 saklar. İkisini de "32" → normalized stringe çek.
 const normId = (id) => {
@@ -41,13 +35,14 @@ export function WorldMapQuiz({ onBack }) {
   const timerRef     = useRef(null)
   const debounceRef  = useRef(null)
   const fbTimerRef   = useRef(null)
-  const guessedRef   = useRef(new Set())   // normalized IDs
+  const guessedRef   = useRef(new Set())
   const inputRef     = useRef(null)
 
+  const DURATION = 600
+
   const [gameState,    setGameState]    = useState('idle')
-  const [duration,     setDuration]     = useState(600)
   const [guessedCount, setGuessedCount] = useState(0)
-  const [timeLeft,     setTimeLeft]     = useState(600)
+  const [timeLeft,     setTimeLeft]     = useState(DURATION)
   const [inputValue,   setInputValue]   = useState('')
   const [feedback,     setFeedback]     = useState(null)
   const [mapLoaded,    setMapLoaded]    = useState(false)
@@ -55,61 +50,21 @@ export function WorldMapQuiz({ onBack }) {
   const [missedList,   setMissedList]   = useState([])
   const [finalCount,   setFinalCount]   = useState(0)
 
-  // ── Mount ─────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    loadMap()
-    return () => {
-      clearInterval(timerRef.current)
-      clearTimeout(debounceRef.current)
-      clearTimeout(fbTimerRef.current)
-    }
-  }, [])
-
-  useEffect(() => {
-    const onResize = () => { if (mapDataRef.current) drawMap(mapDataRef.current) }
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
-
-  // ── Timer ─────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (gameState !== 'playing') return
-    timerRef.current = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) { clearInterval(timerRef.current); endGame(); return 0 }
-        return prev - 1
-      })
-    }, 1000)
-    return () => clearInterval(timerRef.current)
-  }, [gameState])
-
-  // ── Harita yükle ──────────────────────────────────────────────────────────
-  const loadMap = async () => {
-    try {
-      const res   = await fetch(MAP_URL)
-      const world = await res.json()
-      mapDataRef.current = world
-      setMapLoaded(true)
-      drawMap(world)
-    } catch {
-      setMapError(true)
-    }
-  }
-
-  // ── D3 ile harita çiz ─────────────────────────────────────────────────────
+  // ── D3 ile harita çiz — useEffect'lerden ÖNCE tanımlanmalı ────────────────
   const drawMap = useCallback((world) => {
     if (!svgRef.current || !containerRef.current) return
 
     const el = containerRef.current
     const w  = el.clientWidth
     const h  = el.clientHeight
+    if (!w || !h) return
 
     const svg = d3.select(svgRef.current)
     svg.selectAll('*').remove()
     svg.attr('width', w).attr('height', h)
 
     const projection = d3.geoNaturalEarth1()
-      .scale(w / 6.3)
+      .scale(w / 5.6)
       .translate([w / 2, h / 2])
 
     const path     = d3.geoPath().projection(projection)
@@ -129,16 +84,63 @@ export function WorldMapQuiz({ onBack }) {
       .data(features)
       .enter()
       .append('path')
-      // normId: "032" ve 32 ikisini de "32" yapar — ID uyumsuzluğunu çözer
       .attr('class', d => guessedRef.current.has(normId(d.id)) ? 'wm-country wm-guessed' : 'wm-country')
       .attr('data-id', d => normId(d.id))
       .attr('d', path)
   }, [])
 
+  // ── Mount ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    loadMap()
+    return () => {
+      clearInterval(timerRef.current)
+      clearTimeout(debounceRef.current)
+      clearTimeout(fbTimerRef.current)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    const onResize = () => { if (mapDataRef.current) drawMap(mapDataRef.current) }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [drawMap])
+
+  // gameState değişince yeni DOM elementine doğru boyutlarla çiz
+  useEffect(() => {
+    if (!mapDataRef.current) return
+    requestAnimationFrame(() => drawMap(mapDataRef.current))
+  }, [gameState, drawMap])
+
+  // ── Timer ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (gameState !== 'playing') return
+    timerRef.current = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) { clearInterval(timerRef.current); endGame(); return 0 }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(timerRef.current)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState])
+
+  // ── Harita yükle ──────────────────────────────────────────────────────────
+  const loadMap = async () => {
+    try {
+      const res   = await fetch(MAP_URL)
+      const world = await res.json()
+      mapDataRef.current = world
+      setMapLoaded(true)
+      requestAnimationFrame(() => drawMap(world))
+    } catch {
+      setMapError(true)
+    }
+  }
+
   // ── Ülkeyi yeşile boya ────────────────────────────────────────────────────
   const highlightCountry = (countryId) => {
     if (!svgRef.current) return
-    // normId: countries.js'deki "32" ile SVG'deki "32" eşleşir
     d3.select(svgRef.current)
       .selectAll(`[data-id="${normId(countryId)}"]`)
       .classed('wm-guessed', true)
@@ -162,10 +164,7 @@ export function WorldMapQuiz({ onBack }) {
     )
     if (!country) return
 
-    if (guessedRef.current.has(country.id)) {
-      showFeedback('duplicate', country.displayName)
-      return
-    }
+    if (guessedRef.current.has(country.id)) return
 
     guessedRef.current.add(country.id)
     setGuessedCount(guessedRef.current.size)
@@ -176,9 +175,6 @@ export function WorldMapQuiz({ onBack }) {
 
   const handleInputChange = (e) => {
     const val = e.target.value
-    if (val.endsWith(' ')) {
-      handleGuess(val.trim()); setInputValue(''); return
-    }
     setInputValue(val)
     clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => handleGuess(val), 350)
@@ -192,11 +188,10 @@ export function WorldMapQuiz({ onBack }) {
   const startGame = () => {
     guessedRef.current = new Set()
     setGuessedCount(0)
-    setTimeLeft(duration)
+    setTimeLeft(DURATION)
     setInputValue('')
     setFeedback(null)
     setMissedList([])
-    if (mapDataRef.current) drawMap(mapDataRef.current)
     setGameState('playing')
     setTimeout(() => inputRef.current?.focus(), 120)
   }
@@ -220,7 +215,7 @@ export function WorldMapQuiz({ onBack }) {
 
   const pct       = Math.round((finalCount / TOTAL_COUNTRIES) * 100)
   const shareText = `Dünya Haritası Quizi'nde ${finalCount}/${TOTAL_COUNTRIES} ülkeyi (%${pct}) buldum! 🌍 Sen kaç ülkeyi biliyorsun?`
-  const waUrl     = `https://wa.me/?text=${encodeURIComponent(shareText + ' ' + window.location.href)}`
+  const waUrl     = `https://web.whatsapp.com/send?text=${encodeURIComponent(shareText + ' ' + window.location.href)}`
   const twUrl     = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(window.location.href)}`
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -241,18 +236,6 @@ export function WorldMapQuiz({ onBack }) {
               Aklına gelen tüm ülkeleri yaz — haritada yeşile boyanır.<br />
               <strong>{TOTAL_COUNTRIES} ülke</strong> var, kaçını biliyorsun?
             </p>
-            <div className="wm-duration-row">
-              {DURATIONS.map(d => (
-                <button
-                  key={d.secs}
-                  className={`wm-dur-btn${duration === d.secs ? ' active' : ''}`}
-                  onClick={() => setDuration(d.secs)}
-                >
-                  <span className="wm-dur-label">{d.label}</span>
-                  <span className="wm-dur-tag">{d.tag}</span>
-                </button>
-              ))}
-            </div>
             {mapError   && <p className="wm-error">⚠ Harita yüklenemedi. İnternet bağlantını kontrol et.</p>}
             {!mapLoaded && !mapError && <p className="wm-loading">Harita yükleniyor…</p>}
             <button className="btn-primary" onClick={startGame} disabled={!mapLoaded}>Başlat</button>
@@ -322,7 +305,7 @@ export function WorldMapQuiz({ onBack }) {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // OYUN EKRANI — WPM tarzı ortalanmış, kompakt
+  // OYUN EKRANI
   // ══════════════════════════════════════════════════════════════════════════
   const timerDanger = timeLeft <= 30
   return (
@@ -341,7 +324,7 @@ export function WorldMapQuiz({ onBack }) {
         </div>
       </div>
 
-      {/* Harita kartı — bordered, rounded, like words-box */}
+      {/* Harita kartı */}
       <div className="wm-map-card" ref={containerRef}>
         <svg ref={svgRef} className="wm-svg" />
         {feedback && (
@@ -352,7 +335,7 @@ export function WorldMapQuiz({ onBack }) {
         )}
       </div>
 
-      {/* Büyük sayaç — haritanın altında, ortalanmış */}
+      {/* Büyük sayaç */}
       <div className={`wm-big-timer${timerDanger ? ' danger' : ''}`}>
         {formatTime(timeLeft)}
       </div>
@@ -364,7 +347,7 @@ export function WorldMapQuiz({ onBack }) {
         value={inputValue}
         onChange={handleInputChange}
         onKeyDown={handleKeyDown}
-        placeholder="ülke adı yaz… (boşluk veya Enter ile gönder)"
+        placeholder="ülke adı yaz… (Enter ile gönder)"
         autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"
