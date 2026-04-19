@@ -12,7 +12,10 @@ const normId = (id) => {
   return isNaN(n) ? String(id) : String(n)
 }
 
-const normalize = (str) => str.trim().toLowerCase()
+const normalize = (str) =>
+  str.trim().toLowerCase()
+    .replace(/\u0307/g, '')  // İ.toLowerCase() → i + U+0307; noktayı at
+    .replace(/ı/g, 'i')      // dotless ı → i ("ırak" → "irak" eşleşsin)
 
 // ── Ana menü kartı ikonu ──────────────────────────────────────────────────────
 export function WorldMapIcon() {
